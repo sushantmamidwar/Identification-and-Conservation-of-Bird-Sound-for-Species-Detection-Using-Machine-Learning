@@ -1,7 +1,12 @@
-media/*
+**/media/*.mp3
 !media/.gitkeep
 __pycache__/
 *.pyc
 .venv/
 venv/
 .env
+Bird_Species_Detection_System/project/bird_sound_model_rf_main.pkl
+.idea/
+**/media/*.wav
+**/media/*.webm
+**/media/*.mpeg

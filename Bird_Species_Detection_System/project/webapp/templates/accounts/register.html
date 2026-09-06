@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Register — Bird Detection System</title>
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+		integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.1/css/all.css"
+		integrity="sha384-gfdkjb5BdAXd+lj+gudLWI+BXq4IuLW5IT+brZEZsLFm++aCMlF1V92rMkPaX4PP" crossorigin="anonymous">
+	<link
+		href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600&display=swap"
+		rel="stylesheet">
+
+	<style>
+		:root {
+			--emerald: #2ecc8f;
+			--emerald-dark: #1a9e6a;
+			--gold: #f0c060;
+			--deep: #050d0a;
+			--glass: rgba(255, 255, 255, 0.08);
+			--glass-border: rgba(255, 255, 255, 0.14);
+			--nav-h: 68px;
+		}
+
+		*,
+		*::before,
+		*::after {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		html,
+		body {
+			height: 100%;
+			font-family: 'Outfit', sans-serif;
+			background: var(--deep);
+			overflow-x: hidden;
+		}
+
+		/* ══ BACKGROUND SLIDESHOW ══ */
+		.bg-slide {
+			position: fixed;
+			inset: 0;
+			z-index: 0;
+		}
+
+		.bg-slide .slide {
+			position: absolute;
+			inset: 0;
+			background-size: cover;
+			background-position: center;
+			opacity: 0;
+			transition: opacity 2s ease-in-out;
+			filter: brightness(0.22) saturate(1.6);
+			animation: zoomSlow 22s ease-in-out infinite alternate;
+		}
+
+		.bg-slide .slide.active {
+			opacity: 1;
+		}
+
+		@keyframes zoomSlow {
+			from {
+				transform: scale(1.0);
+			}
+
+			to {
+				transform: scale(1.1);
+			}
+		}
+
+		.bg-slide::after {
+			content: '';
+			position: absolute;
+			inset: 0;
+			z-index: 1;
+			background:
+				radial-gradient(ellipse 90% 80% at 50% 50%, rgba(2, 40, 20, 0.55) 0%, transparent 70%),
+				linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, transparent 40%, rgba(0, 0, 0, 0.7) 100%);
+		}
+
+		/* ══ PARTICLES ══ */
+		#particle-canvas {
+			position: fixed;
+			inset: 0;
+			z-index: 2;
+			pointer-events: none;
+		}
+
+		/* ══ SLIDE DOTS ══ */
+		.slide-dots {
+			position: fixed;
+			bottom: 22px;
+			left: 50%;
+			transform: translateX(-50%);
+			z-index: 10;
+			display: flex;
+			gap: 8px;
+		}
+
+		.sdot {
+			width: 6px;
+			height: 6px;
+			border-radius: 50%;
+			background: rgba(255, 255, 255, 0.22);
+			transition: all 0.4s ease;
+		}
+
+		.sdot.active {
+			background: var(--emerald);
+			transform: scale(1.5);
+			box-shadow: 0 0 8px var(--emerald);
+		}
+
+		/* ══ NAVBAR ══ */
+		.navbar {
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			height: var(--nav-h);
+			z-index: 100;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 0 40px;
+			background: rgba(5, 13, 10, 0.55);
+			backdrop-filter: blur(18px);
+			-webkit-backdrop-filter: blur(18px);
+			border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+			transition: background 0.4s ease;
+		}
+
+		.navbar.scrolled {
+			background: rgba(5, 13, 10, 0.92);
+			box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+		}
+
+		.nav-brand {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			text-decoration: none;
+		}
+
+		.nav-brand-icon {
+			font-size: 1.6rem;
+		}
+
+		.nav-brand-text {
+			font-family: 'Cormorant Garamond', serif;
+			font-size: 1.25rem;
+			font-weight: 700;
+			background: linear-gradient(135deg, #fff 20%, var(--gold) 100%);
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+			background-clip: text;
+			line-height: 1;
+		}
+
+		.nav-brand-sub {
+			font-size: 0.58rem;
+			letter-spacing: 0.2em;
+			text-transform: uppercase;
+			color: rgba(255, 255, 255, 0.28);
+			display: block;
+			margin-top: 1px;
+			-webkit-text-fill-color: rgba(255, 255, 255, 0.28);
+		}
+
+		.nav-links {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.nav-link {
+			padding: 8px 16px;
+			border-radius: 10px;
+			font-size: 0.85rem;
+			font-weight: 500;
+			color: rgba(255, 255, 255, 0.55);
+			text-decoration: none;
+			transition: all 0.3s ease;
+		}
+
+		.nav-link:hover {
+			color: #fff;
+			background: rgba(255, 255, 255, 0.07);
+		}
+
+		.nav-btn {
+			padding: 9px 22px;
+			border-radius: 11px;
+			font-family: 'Outfit', sans-serif;
+			font-size: 0.85rem;
+			font-weight: 600;
+			cursor: pointer;
+			text-decoration: none;
+			transition: all 0.3s ease;
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+		}
+
+		.nav-btn-outline {
+			border: 1px solid rgba(255, 255, 255, 0.18);
+			color: rgba(255, 255, 255, 0.75);
+			background: transparent;
+		}
+
+		.nav-btn-outline:hover {
+			border-color: var(--gold);
+			color: var(--gold);
+			background: rgba(240, 192, 96, 0.07);
+		}
+
+		.nav-btn-gold {
+			background: linear-gradient(135deg, var(--gold), #c89a30);
+			color: #0f0a00;
+			border: none;
+			box-shadow: 0 4px 16px rgba(240, 192, 96, 0.3);
+		}
+
+		.nav-btn-gold:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 8px 24px rgba(240, 192, 96, 0.45);
+		}
+
+		/* ══ CONTAINER ══ */
+		.container {
+			position: relative;
+			z-index: 10;
+			padding-top: var(--nav-h);
+		}
+
+		/* ══ CARD ══ */
+		.user_card {
+			width: 460px;
+			margin-top: auto;
+			margin-bottom: auto;
+			background: var(--glass);
+			border: 1px solid var(--glass-border);
+			border-radius: 28px;
+			backdrop-filter: blur(24px);
+			-webkit-backdrop-filter: blur(24px);
+			padding: 44px 38px 36px;
+			box-shadow: 0 28px 70px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.04);
+			position: relative;
+			overflow: hidden;
+			animation: riseUp 1s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+		}
+
+		.user_card::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: 10%;
+			right: 10%;
+			height: 1px;
+			background: linear-gradient(90deg, transparent, rgba(240, 192, 96, 0.6), rgba(46, 204, 143, 0.4), transparent);
+		}
+
+		@keyframes riseUp {
+			from {
+				transform: translateY(55px);
+				opacity: 0;
+			}
+
+			to {
+				transform: translateY(0);
+				opacity: 1;
+			}
+		}
+
+		/* ══ BRAND ══ */
+		.brand-icon {
+			font-size: 2.8rem;
+			display: block;
+			text-align: center;
+			margin-bottom: 8px;
+			animation: floatIcon 3.5s ease-in-out infinite;
+			filter: drop-shadow(0 0 18px rgba(240, 192, 96, 0.5));
+		}
+
+		@keyframes floatIcon {
+
+			0%,
+			100% {
+				transform: translateY(0) rotate(-3deg);
+			}
+
+			50% {
+				transform: translateY(-9px) rotate(3deg);
+			}
+		}
+
+		#form-title {
+			font-family: 'Cormorant Garamond', serif;
+			font-size: 1.9rem;
+			font-weight: 700;
+			text-align: center;
+			background: linear-gradient(135deg, #fff 20%, var(--gold) 100%);
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+			background-clip: text;
+			margin-bottom: 4px;
+		}
+
+		.brand-sub {
+			text-align: center;
+			font-size: 0.7rem;
+			letter-spacing: 0.3em;
+			text-transform: uppercase;
+			color: rgba(255, 255, 255, 0.28);
+			margin-bottom: 6px;
+		}
+
+		.brand-line {
+			width: 0;
+			height: 2px;
+			margin: 10px auto 28px;
+			background: linear-gradient(90deg, transparent, var(--gold), transparent);
+			border-radius: 2px;
+			animation: expandLine 1.4s ease 0.4s forwards;
+		}
+
+		@keyframes expandLine {
+			to {
+				width: 80px;
+			}
+		}
+
+		/* ══ AUTH TABS ══ */
+		.auth-tabs {
+			display: flex;
+			background: rgba(0, 0, 0, 0.3);
+			border-radius: 14px;
+			padding: 5px;
+			margin-bottom: 28px;
+			border: 1px solid rgba(255, 255, 255, 0.06);
+		}
+
+		.auth-tab {
+			flex: 1;
+			padding: 11px 10px;
+			font-family: 'Outfit', sans-serif;
+			font-size: 0.85rem;
+			font-weight: 500;
+			color: rgba(255, 255, 255, 0.38);
+			background: transparent;
+			border: none;
+			border-radius: 10px;
+			cursor: pointer;
+			transition: all 0.3s ease;
+			text-decoration: none;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 6px;
+		}
+
+		.auth-tab.active {
+			background: var(--gold);
+			color: #1a1200;
+			box-shadow: 0 4px 18px rgba(240, 192, 96, 0.38);
+		}
+
+		.auth-tab:not(.active):hover {
+			color: rgba(255, 255, 255, 0.75);
+			background: rgba(255, 255, 255, 0.06);
+		}
+
+		/* ══ STEPS ══ */
+		.steps {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0;
+			margin-bottom: 26px;
+		}
+
+		.step {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 5px;
+		}
+
+		.step-circle {
+			width: 28px;
+			height: 28px;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 0.72rem;
+			font-weight: 600;
+			background: rgba(255, 255, 255, 0.08);
+			border: 1px solid rgba(255, 255, 255, 0.15);
+			color: rgba(255, 255, 255, 0.35);
+			transition: all 0.3s ease;
+		}
+
+		.step.active .step-circle {
+			background: var(--gold);
+			border-color: var(--gold);
+			color: #1a1200;
+			box-shadow: 0 0 10px rgba(240, 192, 96, 0.4);
+		}
+
+		.step.done .step-circle {
+			background: var(--emerald);
+			border-color: var(--emerald);
+			color: #fff;
+			box-shadow: 0 0 10px rgba(46, 204, 143, 0.4);
+		}
+
+		.step-label {
+			font-size: 0.6rem;
+			color: rgba(255, 255, 255, 0.25);
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+		}
+
+		.step.active .step-label {
+			color: var(--gold);
+		}
+
+		.step.done .step-label {
+			color: var(--emerald);
+		}
+
+		.step-line {
+			width: 40px;
+			height: 1px;
+			background: rgba(255, 255, 255, 0.1);
+			margin: 0 6px;
+			margin-bottom: 18px;
+		}
+
+		/* ══ INPUTS ══ */
+		.form_container {
+			margin-top: 0;
+		}
+
+		.input-group {
+			margin-bottom: 16px !important;
+		}
+
+		.input-group-text {
+			background: rgba(240, 192, 96, 0.12) !important;
+			color: var(--gold) !important;
+			border: 1px solid rgba(240, 192, 96, 0.2) !important;
+			border-right: none !important;
+			border-radius: 12px 0 0 12px !important;
+			padding: 0 16px !important;
+			font-size: 0.9rem;
+			transition: background 0.3s ease;
+		}
+
+		.input-group:focus-within .input-group-text {
+			background: rgba(240, 192, 96, 0.22) !important;
+			border-color: var(--gold) !important;
+		}
+
+		.form-control {
+			background: rgba(0, 0, 0, 0.28) !important;
+			border: 1px solid rgba(255, 255, 255, 0.1) !important;
+			border-left: none !important;
+			border-radius: 0 12px 12px 0 !important;
+			color: #fff !important;
+			font-family: 'Outfit', sans-serif;
+			font-size: 0.92rem !important;
+			padding: 12px 16px !important;
+			transition: border-color 0.3s, box-shadow 0.3s, background 0.3s !important;
+			height: auto !important;
+		}
+
+		.form-control::placeholder {
+			color: rgba(255, 255, 255, 0.2) !important;
+		}
+
+		.form-control:focus {
+			background: rgba(0, 0, 0, 0.4) !important;
+			border-color: var(--gold) !important;
+			box-shadow: 0 0 0 3px rgba(240, 192, 96, 0.1) !important;
+			outline: none !important;
+		}
+
+		.pw-wrap {
+			position: relative;
+			flex: 1 1 auto;
+		}
+
+		.pw-wrap .form-control {
+			width: 100%;
+			border-radius: 0 12px 12px 0 !important;
+		}
+
+		.pw-eye {
+			position: absolute;
+			right: 13px;
+			top: 50%;
+			transform: translateY(-50%);
+			background: none;
+			border: none;
+			color: rgba(255, 255, 255, 0.3);
+			cursor: pointer;
+			font-size: 0.88rem;
+			padding: 0;
+			transition: color 0.25s ease;
+			z-index: 5;
+		}
+
+		.pw-eye:hover {
+			color: var(--gold);
+		}
+
+		.pw-strength {
+			margin-top: 6px;
+			height: 3px;
+			border-radius: 2px;
+			background: rgba(255, 255, 255, 0.08);
+			overflow: hidden;
+		}
+
+		.pw-strength-bar {
+			height: 100%;
+			width: 0;
+			border-radius: 2px;
+			transition: width 0.4s ease, background 0.4s ease;
+		}
+
+		/* ══ SUBMIT BUTTON ══ */
+		.login_btn {
+			width: 100% !important;
+			padding: 14px 24px !important;
+			background: linear-gradient(135deg, var(--gold), #c89a30) !important;
+			color: #0f0a00 !important;
+			border: none !important;
+			border-radius: 13px !important;
+			font-family: 'Outfit', sans-serif !important;
+			font-size: 1rem !important;
+			font-weight: 700 !important;
+			letter-spacing: 0.04em !important;
+			cursor: pointer;
+			box-shadow: 0 6px 26px rgba(240, 192, 96, 0.32) !important;
+			transition: transform 0.25s ease, box-shadow 0.25s ease !important;
+			position: relative;
+			overflow: hidden;
+		}
+
+		.login_btn::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: -100%;
+			width: 100%;
+			height: 100%;
+			background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+			transition: left 0.5s ease;
+		}
+
+		.login_btn:hover::before {
+			left: 100%;
+		}
+
+		.login_btn:hover {
+			transform: translateY(-3px) scale(1.01) !important;
+			box-shadow: 0 14px 40px rgba(240, 192, 96, 0.45) !important;
+		}
+
+		.login_btn:focus {
+			box-shadow: 0 0 0 3px rgba(240, 192, 96, 0.3) !important;
+			outline: none !important;
+		}
+
+		.login_btn:active {
+			transform: scale(0.98) !important;
+		}
+
+		/* ══ ERRORS ══ */
+		.errorlist,
+		.form-errors {
+			background: rgba(231, 76, 60, 0.12) !important;
+			border: 1px solid rgba(231, 76, 60, 0.28) !important;
+			border-radius: 12px !important;
+			color: #ff8a80 !important;
+			padding: 12px 16px !important;
+			margin-top: 14px !important;
+			font-size: 0.82rem !important;
+			line-height: 1.7 !important;
+			list-style: none !important;
+		}
+
+		/* ══ DIVIDER ══ */
+		.divider {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			margin: 20px 0 14px;
+		}
+
+		.divider-line {
+			flex: 1;
+			height: 1px;
+			background: rgba(255, 255, 255, 0.09);
+		}
+
+		.divider span {
+			font-size: 0.68rem;
+			color: rgba(255, 255, 255, 0.22);
+			letter-spacing: 0.12em;
+			text-transform: uppercase;
+		}
+
+		/* ══ LINKS ══ */
+		.links {
+			font-size: 0.84rem;
+			color: rgba(255, 255, 255, 0.32);
+		}
+
+		.links a {
+			color: var(--emerald);
+			font-weight: 500;
+			text-decoration: none;
+			transition: color 0.25s ease;
+		}
+
+		.links a:hover {
+			color: var(--gold);
+		}
+
+		.terms-note {
+			font-size: 0.72rem;
+			color: rgba(255, 255, 255, 0.2);
+			text-align: center;
+			margin-top: 16px;
+			line-height: 1.5;
+		}
+
+		.terms-note a {
+			color: rgba(255, 255, 255, 0.35);
+			text-decoration: none;
+		}
+
+		.terms-note a:hover {
+			color: var(--gold);
+		}
+
+		@media (max-width:500px) {
+			.user_card {
+				width: 92vw;
+				padding: 32px 20px 28px;
+			}
+
+			.navbar {
+				padding: 0 16px;
+			}
+		}
+	</style>
+</head>
+
+<body>
+
+	<!-- HD Bird Backgrounds -->
+	<div class="bg-slide">
+		<div class="slide active"
+			style="background-image:url('https://images.unsplash.com/photo-1444464666168-49d633b86797?w=1920&q=85&auto=format&fit=crop')">
+		</div>
+		<div class="slide"
+			style="background-image:url('https://images.unsplash.com/photo-1552728089-57bdde30beb3?w=1920&q=85&auto=format&fit=crop')">
+		</div>
+		<div class="slide"
+			style="background-image:url('https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=1920&q=85&auto=format&fit=crop')">
+		</div>
+		<div class="slide"
+			style="background-image:url('https://images.unsplash.com/photo-1611689342806-0863700ce1e4?w=1920&q=85&auto=format&fit=crop')">
+		</div>
+		<div class="slide"
+			style="background-image:url('https://images.unsplash.com/photo-1550853024-fae8cd4be47f?w=1920&q=85&auto=format&fit=crop')">
+		</div>
+	</div>
+
+	<canvas id="particle-canvas"></canvas>
+
+	<div class="slide-dots" id="slideDots">
+		<div class="sdot active"></div>
+		<div class="sdot"></div>
+		<div class="sdot"></div>
+		<div class="sdot"></div>
+		<div class="sdot"></div>
+	</div>
+
+	<!-- NAVBAR -->
+	<nav class="navbar" id="navbar">
+		<a href="{% url 'home' %}" class="nav-brand"> <!-- ✅ FIXED: was 'index' -->
+			<span class="nav-brand-icon">🐦</span>
+			<span>
+				<span class="nav-brand-text">BirdDetect AI</span>
+				<span class="nav-brand-sub">Species Identification</span>
+			</span>
+		</a>
+		<div class="nav-links">
+			<a href="{% url 'home' %}" class="nav-link">🏠 Home</a> <!-- ✅ FIXED: was 'index' -->
+			<a href="{% url 'login' %}" class="nav-btn nav-btn-outline">🔑 Login</a>
+			<a href="{% url 'register' %}" class="nav-btn nav-btn-gold">✦ Register</a>
+		</div>
+	</nav>
+
+	<!-- Main Container -->
+	<div class="container h-100">
+		<div class="d-flex justify-content-center h-100">
+			<div class="user_card">
+
+				<!-- Brand -->
+				<span class="brand-icon">✦</span>
+				<h3 id="form-title">Create Account</h3>
+				<p class="brand-sub">Join Bird Detection AI</p>
+				<div class="brand-line"></div>
+
+				<!-- Login / Register Tabs -->
+				<div class="auth-tabs">
+					<a href="{% url 'login' %}" class="auth-tab">🔑 &nbsp; Login</a>
+					<a href="{% url 'register' %}" class="auth-tab active">✦ &nbsp; Register</a>
+				</div>
+
+				<!-- Step Indicator -->
+				<div class="steps">
+					<div class="step active">
+						<div class="step-circle">1</div>
+						<div class="step-label">Account</div>
+					</div>
+					<div class="step-line"></div>
+					<div class="step">
+						<div class="step-circle">2</div>
+						<div class="step-label">Verify</div>
+					</div>
+					<div class="step-line"></div>
+					<div class="step">
+						<div class="step-circle">3</div>
+						<div class="step-label">Done</div>
+					</div>
+				</div>
+
+				<!-- Form -->
+				<div class="d-flex justify-content-center form_container">
+					<form method="POST" action="" style="width:100%">
+						{% csrf_token %}
+
+						<!-- Username -->
+						<div class="input-group mb-3">
+							<div class="input-group-append">
+								<span class="input-group-text"><i class="fas fa-user"></i></span>
+							</div>
+							{{form.username}}
+						</div>
+
+						<!-- Email -->
+						<div class="input-group mb-2">
+							<div class="input-group-append">
+								<span class="input-group-text"><i class="fas fa-envelope"></i></span>
+							</div>
+							{{form.email}}
+						</div>
+
+						<!-- Password 1 -->
+						<div class="input-group mb-1">
+							<div class="input-group-append">
+								<span class="input-group-text"><i class="fas fa-lock"></i></span>
+							</div>
+							<div class="pw-wrap">
+								{{form.password1}}
+								<button type="button" class="pw-eye" onclick="togglePw('pw1','eye1')" id="eye1">
+									<i class="fas fa-eye"></i>
+								</button>
+							</div>
+						</div>
+
+						<!-- Password Strength Bar -->
+						<div class="pw-strength mb-2">
+							<div class="pw-strength-bar" id="pwBar"></div>
+						</div>
+
+						<!-- Password 2 -->
+						<div class="input-group mb-2">
+							<div class="input-group-append">
+								<span class="input-group-text"><i class="fas fa-lock"></i></span>
+							</div>
+							<div class="pw-wrap">
+								{{form.password2}}
+								<button type="button" class="pw-eye" onclick="togglePw('pw2','eye2')" id="eye2">
+									<i class="fas fa-eye"></i>
+								</button>
+							</div>
+						</div>
+
+						<!-- Submit -->
+						<div class="d-flex justify-content-center mt-3 login_container">
+							<input class="btn login_btn" type="submit" value="✦  Create Account">
+						</div>
+
+					</form>
+				</div>
+
+				<!-- Django Errors -->
+				{{form.errors}}
+
+				<!-- Divider -->
+				<div class="divider">
+					<div class="divider-line"></div>
+					<span>already joined?</span>
+					<div class="divider-line"></div>
+				</div>
+
+				<!-- Login Link -->
+				<div class="mt-1">
+					<div class="d-flex justify-content-center links">
+						Already have an account?
+						<a href="{% url 'login' %}" class="ml-2">Sign In →</a>
+					</div>
+				</div>
+
+				<p class="terms-note">
+					By registering you agree to our
+					<a href="#">Terms of Service</a> &amp; <a href="#">Privacy Policy</a>
+				</p>
+
+			</div>
+		</div>
+	</div>
+
+	<script>
+		/* ── SLIDESHOW ── */
+		const slides = document.querySelectorAll('.bg-slide .slide');
+		const dots = document.querySelectorAll('#slideDots .sdot');
+		let cur = 0;
+		setInterval(() => {
+			slides[cur].classList.remove('active'); dots[cur].classList.remove('active');
+			cur = (cur + 1) % slides.length;
+			slides[cur].classList.add('active'); dots[cur].classList.add('active');
+		}, 5500);
+
+		/* ── PARTICLES ── */
+		const canvas = document.getElementById('particle-canvas');
+		const ctx = canvas.getContext('2d');
+		const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+		resize(); window.addEventListener('resize', resize);
+
+		class Particle {
+			constructor() { this.reset(true); }
+			reset(init = false) {
+				this.x = Math.random() * canvas.width;
+				this.y = init ? Math.random() * canvas.height : canvas.height + 10;
+				this.r = Math.random() * 2.2 + 0.8;
+				this.vy = Math.random() * 0.6 + 0.2;
+				this.vx = (Math.random() - 0.5) * 0.3;
+				this.a = Math.random() * 0.4 + 0.08;
+				this.c = Math.random() > 0.5 ? '240,192,96' : '46,204,143';
+			}
+			step() { this.y -= this.vy; this.x += this.vx; this.a -= 0.001; if (this.y < -10 || this.a <= 0) this.reset(); }
+			draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2); ctx.fillStyle = `rgba(${this.c},${this.a})`; ctx.fill(); }
+		}
+
+		const pts = Array.from({ length: 65 }, () => new Particle());
+		(function loop() { ctx.clearRect(0, 0, canvas.width, canvas.height); pts.forEach(p => { p.step(); p.draw(); }); requestAnimationFrame(loop); })();
+
+		/* ── NAVBAR SCROLL ── */
+		window.addEventListener('scroll', () => {
+			document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 30);
+		});
+
+		/* ── PLACEHOLDERS + FORM-CONTROL CLASS ── */
+		var form_fields = document.getElementsByTagName('input');
+		if (form_fields[1]) form_fields[1].placeholder = 'Choose a username…';
+		if (form_fields[2]) form_fields[2].placeholder = 'Your email address…';
+		if (form_fields[3]) { form_fields[3].placeholder = 'Create a password…'; form_fields[3].id = 'pw1'; }
+		if (form_fields[4]) { form_fields[4].placeholder = 'Re-enter your password…'; form_fields[4].id = 'pw2'; }
+
+		for (var i = 0; i < form_fields.length; i++) {
+			if (form_fields[i].type !== 'hidden' && form_fields[i].type !== 'submit') {
+				form_fields[i].className += ' form-control';
+			}
+		}
+
+		/* ── PASSWORD TOGGLE ── */
+		function togglePw(fieldId, btnId) {
+			const inp = document.getElementById(fieldId);
+			const ico = document.querySelector('#' + btnId + ' i');
+			if (!inp) return;
+			if (inp.type === 'password') { inp.type = 'text'; ico.classList.replace('fa-eye', 'fa-eye-slash'); }
+			else { inp.type = 'password'; ico.classList.replace('fa-eye-slash', 'fa-eye'); }
+		}
+
+		/* ── PASSWORD STRENGTH ── */
+		document.addEventListener('input', function (e) {
+			if (!e.target.id || e.target.id !== 'pw1') return;
+			const v = e.target.value;
+			const bar = document.getElementById('pwBar');
+			let strength = 0;
+			if (v.length >= 8) strength++;
+			if (/[A-Z]/.test(v)) strength++;
+			if (/[0-9]/.test(v)) strength++;
+			if (/[^A-Za-z0-9]/.test(v)) strength++;
+			const colors = ['#e74c3c', '#e67e22', '#f1c40f', '#2ecc8f'];
+			const widths = ['25%', '50%', '75%', '100%'];
+			if (v.length === 0) { bar.style.width = '0'; return; }
+			bar.style.width = widths[strength - 1] || '10%';
+			bar.style.background = colors[strength - 1] || '#e74c3c';
+		});
+	</script>
+
+</body>
+
+</html>

@@ -1,0 +1,1072 @@
+{% extends 'accounts/main.html' %}
+{% load static %}
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Record Live Audio — Bird Detection</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Outfit:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --emerald: #2ecc8f;
+            --emerald-dark: #1a9e6a;
+            --gold: #f0c060;
+            --deep: #050d0a;
+            --glass: rgba(255, 255, 255, 0.07);
+            --glass-border: rgba(255, 255, 255, 0.13);
+            --nav-h: 68px;
+        }
+
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--deep);
+            color: #fff;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* ── BACKGROUND ── */
+        .bg-slide {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+        }
+
+        .bg-slide .slide {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+            filter: brightness(0.18) saturate(1.6);
+            animation: zoomSlow 22s ease-in-out infinite alternate;
+        }
+
+        .bg-slide .slide.active {
+            opacity: 1;
+        }
+
+        @keyframes zoomSlow {
+            from {
+                transform: scale(1.0);
+            }
+
+            to {
+                transform: scale(1.1);
+            }
+        }
+
+        .bg-slide::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            background:
+                radial-gradient(ellipse 70% 60% at 50% 40%, rgba(2, 40, 20, 0.6) 0%, transparent 70%),
+                linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, transparent 50%, rgba(0, 0, 0, 0.7) 100%);
+        }
+
+        /* ── PARTICLES ── */
+        #particle-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* ── NAVBAR ── */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--nav-h);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            background: rgba(5, 13, 10, 0.55);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+            transition: background 0.4s ease;
+        }
+
+        .navbar.scrolled {
+            background: rgba(5, 13, 10, 0.92);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .nav-brand-icon {
+            font-size: 1.6rem;
+        }
+
+        .nav-brand-text {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff 20%, var(--gold) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+
+        .nav-brand-sub {
+            font-size: 0.58rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.28);
+            display: block;
+            margin-top: 1px;
+            -webkit-text-fill-color: rgba(255, 255, 255, 0.28);
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-link {
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.55);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-link:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.07);
+        }
+
+        .nav-link.active {
+            color: var(--emerald);
+        }
+
+        .nav-btn {
+            padding: 9px 22px;
+            border-radius: 11px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-btn-outline {
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: rgba(255, 255, 255, 0.75);
+            background: transparent;
+        }
+
+        .nav-btn-outline:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+            background: rgba(240, 192, 96, 0.07);
+        }
+
+        .nav-btn-solid {
+            background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+            color: #fff;
+            border: none;
+            box-shadow: 0 4px 16px rgba(46, 204, 143, 0.3);
+        }
+
+        .nav-btn-solid:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(46, 204, 143, 0.45);
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #fff;
+            box-shadow: 0 0 12px rgba(46, 204, 143, 0.4);
+        }
+
+        .nav-username {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 500;
+        }
+
+        .nav-toggle {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .nav-toggle span {
+            width: 22px;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 2px;
+            display: block;
+        }
+
+        /* ── BREADCRUMB ── */
+        .breadcrumb {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding-top: calc(var(--nav-h) + 24px);
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.3);
+            animation: fadeDown 0.7s ease both;
+        }
+
+        .breadcrumb a {
+            color: var(--emerald);
+            text-decoration: none;
+            transition: color 0.25s;
+        }
+
+        .breadcrumb a:hover {
+            color: var(--gold);
+        }
+
+        .breadcrumb .sep {
+            opacity: 0.4;
+        }
+
+        /* ── PAGE HEADER ── */
+        .page-header {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 16px 20px 40px;
+            animation: fadeDown 0.8s ease 0.1s both;
+        }
+
+        .page-label {
+            font-size: 0.7rem;
+            letter-spacing: 0.45em;
+            text-transform: uppercase;
+            color: var(--emerald);
+            margin-bottom: 12px;
+        }
+
+        .page-header h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(2.2rem, 5vw, 3.6rem);
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff 30%, var(--gold) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.1;
+        }
+
+        .page-divider {
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--emerald), transparent);
+            margin: 16px auto 0;
+            border-radius: 2px;
+            animation: expandLine 1.2s ease 0.3s both;
+        }
+
+        @keyframes expandLine {
+            from {
+                width: 0;
+                opacity: 0;
+            }
+
+            to {
+                width: 80px;
+                opacity: 1;
+            }
+        }
+
+        /* ── RECORD CARD ── */
+        .record-wrapper {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 0 20px 80px;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .record-card {
+            width: 100%;
+            max-width: 480px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 28px;
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+            padding: 44px 40px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
+            animation: riseUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .record-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 10%;
+            right: 10%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(46, 204, 143, 0.5), rgba(240, 192, 96, 0.3), transparent);
+        }
+
+        @keyframes riseUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* ── MIC AREA ── */
+        .mic-area {
+            text-align: center;
+            padding: 10px 0 24px;
+        }
+
+        .mic-ring-wrap {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            margin: 0 auto 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* outer rings */
+        .ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 1.5px solid rgba(46, 204, 143, 0.2);
+        }
+
+        .ring-1 {
+            inset: -20px;
+        }
+
+        .ring-2 {
+            inset: -36px;
+        }
+
+        .ring-3 {
+            inset: -52px;
+        }
+
+        .ring-1.pulse {
+            animation: ringPulse 2s ease-out infinite;
+        }
+
+        .ring-2.pulse {
+            animation: ringPulse 2s ease-out 0.4s infinite;
+        }
+
+        .ring-3.pulse {
+            animation: ringPulse 2s ease-out 0.8s infinite;
+        }
+
+        @keyframes ringPulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.6;
+            }
+
+            100% {
+                transform: scale(1.15);
+                opacity: 0;
+            }
+        }
+
+        .mic-btn {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+            border: none;
+            cursor: pointer;
+            font-size: 2.4rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 40px rgba(46, 204, 143, 0.45);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+            position: relative;
+            z-index: 2;
+        }
+
+        .mic-btn:hover {
+            transform: scale(1.08);
+            box-shadow: 0 16px 50px rgba(46, 204, 143, 0.6);
+        }
+
+        .mic-btn.recording {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            box-shadow: 0 10px 40px rgba(231, 76, 60, 0.5);
+            animation: recordPulse 0.8s ease-in-out infinite alternate;
+        }
+
+        @keyframes recordPulse {
+            from {
+                transform: scale(1);
+            }
+
+            to {
+                transform: scale(1.06);
+            }
+        }
+
+        .mic-hint {
+            font-size: 0.82rem;
+            color: rgba(255, 255, 255, 0.35);
+            line-height: 1.7;
+            margin-bottom: 0;
+        }
+
+        /* ── WAVEFORM ── */
+        .waveform {
+            display: none;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 5px;
+            height: 52px;
+            margin: 20px auto 8px;
+        }
+
+        .waveform.visible {
+            display: flex;
+        }
+
+        .waveform .bar {
+            width: 5px;
+            border-radius: 3px;
+            background: var(--emerald);
+            animation: waveBar 0.7s ease-in-out infinite alternate;
+        }
+
+        .waveform .bar:nth-child(1) {
+            height: 14px;
+            animation-delay: 0.0s;
+        }
+
+        .waveform .bar:nth-child(2) {
+            height: 26px;
+            animation-delay: 0.1s;
+        }
+
+        .waveform .bar:nth-child(3) {
+            height: 42px;
+            animation-delay: 0.2s;
+        }
+
+        .waveform .bar:nth-child(4) {
+            height: 52px;
+            animation-delay: 0.25s;
+        }
+
+        .waveform .bar:nth-child(5) {
+            height: 42px;
+            animation-delay: 0.3s;
+        }
+
+        .waveform .bar:nth-child(6) {
+            height: 26px;
+            animation-delay: 0.4s;
+        }
+
+        .waveform .bar:nth-child(7) {
+            height: 14px;
+            animation-delay: 0.5s;
+        }
+
+        @keyframes waveBar {
+            from {
+                transform: scaleY(0.3);
+                opacity: 0.5;
+            }
+
+            to {
+                transform: scaleY(1.0);
+                opacity: 1;
+            }
+        }
+
+        /* ── COUNTDOWN ── */
+        #countdown {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 3.6rem;
+            color: var(--gold);
+            display: none;
+            text-align: center;
+            margin: 4px 0;
+            line-height: 1;
+            animation: countPop 0.3s ease both;
+        }
+
+        @keyframes countPop {
+            from {
+                transform: scale(0.6);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* ── STATUS ── */
+        #recStatus {
+            font-size: 0.82rem;
+            color: rgba(255, 255, 255, 0.4);
+            text-align: center;
+            margin-top: 10px;
+            min-height: 20px;
+            letter-spacing: 0.04em;
+        }
+
+        /* ── AUDIO PREVIEW ── */
+        .audio-preview {
+            display: none;
+            margin-top: 20px;
+            padding: 16px 18px;
+            background: rgba(46, 204, 143, 0.06);
+            border: 1px solid rgba(46, 204, 143, 0.18);
+            border-radius: 14px;
+        }
+
+        .audio-preview.visible {
+            display: block;
+            animation: fadeIn 0.4s ease both;
+        }
+
+        .audio-preview-label {
+            font-size: 0.68rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.35);
+            margin-bottom: 10px;
+        }
+
+        audio {
+            width: 100%;
+            height: 36px;
+            border-radius: 8px;
+            outline: none;
+            filter: invert(1) hue-rotate(150deg) brightness(0.85);
+        }
+
+        /* ── BUTTONS ── */
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            flex: 1;
+            min-width: 130px;
+            padding: 14px 20px;
+            border-radius: 13px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.25s ease;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+            color: #fff;
+            box-shadow: 0 6px 24px rgba(46, 204, 143, 0.35);
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 36px rgba(46, 204, 143, 0.5);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-back {
+            background: transparent;
+            color: rgba(255, 255, 255, 0.65);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .btn-back:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+            background: rgba(240, 192, 96, 0.07);
+            transform: translateY(-2px);
+        }
+
+        /* ── TIPS CARD ── */
+        .tips-card {
+            width: 100%;
+            max-width: 260px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 22px;
+            backdrop-filter: blur(18px);
+            padding: 28px 24px;
+            animation: riseUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
+        }
+
+        .tips-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--gold);
+            margin-bottom: 16px;
+        }
+
+        .tip {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .tip:last-child {
+            margin-bottom: 0;
+        }
+
+        .tip-icon {
+            font-size: 1.1rem;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .tip-text {
+            font-size: 0.78rem;
+            color: rgba(255, 255, 255, 0.45);
+            line-height: 1.6;
+        }
+
+        .tip-text strong {
+            color: rgba(255, 255, 255, 0.75);
+            font-weight: 500;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        /* ── FOOTER ── */
+        .site-footer {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 28px 20px;
+            color: rgba(255, 255, 255, 0.18);
+            font-size: 0.72rem;
+            letter-spacing: 0.12em;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        @keyframes fadeDown {
+            from {
+                transform: translateY(-24px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width:700px) {
+            .navbar {
+                padding: 0 20px;
+            }
+
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: var(--nav-h);
+                left: 0;
+                right: 0;
+                background: rgba(5, 13, 10, 0.97);
+                padding: 16px 20px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+                gap: 4px;
+            }
+
+            .nav-links.open {
+                display: flex;
+            }
+
+            .nav-toggle {
+                display: flex;
+            }
+
+            .tips-card {
+                max-width: 100%;
+            }
+
+            .record-card {
+                padding: 32px 22px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Backgrounds -->
+    <div class="bg-slide">
+        <div class="slide active"
+            style="background-image:url('https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=1920&q=85&auto=format&fit=crop')">
+        </div>
+        <div class="slide"
+            style="background-image:url('https://images.unsplash.com/photo-1444464666168-49d633b86797?w=1920&q=85&auto=format&fit=crop')">
+        </div>
+        <div class="slide"
+            style="background-image:url('https://images.unsplash.com/photo-1552728089-57bdde30beb3?w=1920&q=85&auto=format&fit=crop')">
+        </div>
+        <div class="slide"
+            style="background-image:url('https://images.unsplash.com/photo-1550853024-fae8cd4be47f?w=1920&q=85&auto=format&fit=crop')">
+        </div>
+    </div>
+
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- NAVBAR -->
+    <nav class="navbar" id="navbar">
+        <a href="{% url 'predictImage1' %}" class="nav-brand">
+            <span class="nav-brand-icon">🐦</span>
+            <span>
+                <span class="nav-brand-text">BirdDetect AI</span>
+                <span class="nav-brand-sub">Species Identification</span>
+            </span>
+        </a>
+        <div class="nav-links" id="navLinks">
+            <a href="{% url 'home' %}" class="nav-link">🏠 Home</a>
+            <a href="{% url 'home' %}#tool" class="nav-link">📁 Upload</a>
+            <a href="{% url 'home2' %}" class="nav-link active">🎤 Record</a>
+            {% if user.is_authenticated %}
+            <div class="nav-user">
+                <div class="nav-avatar">{{ user.username|first|upper }}</div>
+                <span class="nav-username">{{ user.username }}</span>
+            </div>
+            <a href="{% url 'logout' %}" class="nav-btn nav-btn-outline">🚪 Logout</a>
+            {% else %}
+            <a href="{% url 'login' %}" class="nav-btn nav-btn-outline">🔑 Login</a>
+            <a href="{% url 'register' %}" class="nav-btn nav-btn-solid">✦ Sign Up</a>
+            {% endif %}
+        </div>
+        <button class="nav-toggle" onclick="document.getElementById('navLinks').classList.toggle('open')">
+            <span></span><span></span><span></span>
+        </button>
+    </nav>
+
+    <!-- BREADCRUMB -->
+    <div class="breadcrumb">
+        <a href="{% url 'home' %}">Home</a>
+        <span class="sep">›</span>
+        <span style="color:var(--emerald)">Live Recording</span>
+    </div>
+
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+        <p class="page-label">🎤 Live Bird Sound Recording</p>
+        <h1>Record & Identify</h1>
+        <div class="page-divider"></div>
+    </div>
+
+    <!-- RECORD WRAPPER -->
+    <div class="record-wrapper">
+
+        <!-- MAIN RECORD CARD -->
+        <div class="record-card">
+
+            <div class="mic-area">
+
+                <!-- Mic button with rings -->
+                <div class="mic-ring-wrap">
+                    <div class="ring ring-1" id="ring1"></div>
+                    <div class="ring ring-2" id="ring2"></div>
+                    <div class="ring ring-3" id="ring3"></div>
+                    <button class="mic-btn" id="micBtn" onclick="toggleRecording()">🎤</button>
+                </div>
+
+                <p class="mic-hint" id="micHint">
+                    Press the microphone to start a<br>
+                    <strong style="color:rgba(255,255,255,0.7);">5-second</strong> live bird sound recording
+                </p>
+
+                <!-- Waveform (shows during recording) -->
+                <div class="waveform" id="waveform">
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                </div>
+
+                <!-- Countdown -->
+                <div id="countdown"></div>
+
+                <!-- Status -->
+                <p id="recStatus">Tap the mic to begin</p>
+
+            </div>
+
+            <!-- Audio Preview (shown after recording) -->
+            <div class="audio-preview" id="audioPreview">
+                <p class="audio-preview-label">🎵 Your Recording — Preview</p>
+                <audio id="audioPlayer" controls></audio>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="btn-row">
+                <button class="btn btn-submit" id="submitBtn" style="display:none" onclick="submitRecording()">
+                    🔍 &nbsp; Identify Bird
+                </button>
+                <a href="{% url 'predictImage1' %}" class="btn btn-back">
+                    ← &nbsp; Upload Instead
+                </a>
+            </div>
+
+        </div>
+
+        <!-- TIPS CARD -->
+        <div class="tips-card">
+            <div class="tips-title">🌿 Recording Tips</div>
+
+            <div class="tip">
+                <span class="tip-icon">📍</span>
+                <div class="tip-text"><strong>Go Outside</strong>Record near trees, bushes or water where birds are
+                    active</div>
+            </div>
+            <div class="tip">
+                <span class="tip-icon">🤫</span>
+                <div class="tip-text"><strong>Stay Quiet</strong>Minimize background noise — wind, traffic and voices
+                    hurt accuracy</div>
+            </div>
+            <div class="tip">
+                <span class="tip-icon">⏱️</span>
+                <div class="tip-text"><strong>5 Seconds</strong>Recording auto-stops after 5 seconds — the ideal length
+                    for detection</div>
+            </div>
+            <div class="tip">
+                <span class="tip-icon">📱</span>
+                <div class="tip-text"><strong>Hold Close</strong>Point your mic toward the bird sound for best results
+                </div>
+            </div>
+            <div class="tip">
+                <span class="tip-icon">🌅</span>
+                <div class="tip-text"><strong>Best Time</strong>Early morning (6–9 AM) is when birds are most vocal
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="site-footer">
+        Group-4 &nbsp;·&nbsp; Information Technology &nbsp;·&nbsp; GHRCEMP &nbsp;·&nbsp; Bird Species Detection AI
+    </footer>
+
+    <script>
+        /* PARTICLES */
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+        resize(); window.addEventListener('resize', resize);
+        class Particle {
+            constructor() { this.reset(true); }
+            reset(init = false) { this.x = Math.random() * canvas.width; this.y = init ? Math.random() * canvas.height : canvas.height + 10; this.r = Math.random() * 2.2 + 0.8; this.vy = Math.random() * 0.65 + 0.2; this.vx = (Math.random() - 0.5) * 0.3; this.a = Math.random() * 0.4 + 0.08; this.c = Math.random() > 0.5 ? '46,204,143' : '240,192,96'; }
+            step() { this.y -= this.vy; this.x += this.vx; this.a -= 0.001; if (this.y < -10 || this.a <= 0) this.reset(); }
+            draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2); ctx.fillStyle = `rgba(${this.c},${this.a})`; ctx.fill(); }
+        }
+        const pts = Array.from({ length: 60 }, () => new Particle());
+        (function loop() { ctx.clearRect(0, 0, canvas.width, canvas.height); pts.forEach(p => { p.step(); p.draw(); }); requestAnimationFrame(loop); })();
+
+        /* SLIDESHOW */
+        const slides = document.querySelectorAll('.bg-slide .slide');
+        let cur = 0;
+        setInterval(() => { slides[cur].classList.remove('active'); cur = (cur + 1) % slides.length; slides[cur].classList.add('active'); }, 5500);
+
+        /* NAVBAR SCROLL */
+        window.addEventListener('scroll', () => { document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 40); });
+
+        /* ── RECORDING LOGIC ── */
+        let mr, chunks = [], blob, recActive = false, cdTimer;
+
+        function toggleRecording() { recActive ? stopRec() : startRec(); }
+
+        function startRec() {
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                recActive = true; chunks = [];
+                mr = new MediaRecorder(stream);
+                mr.start();
+                mr.ondataavailable = e => chunks.push(e.data);
+                mr.onstop = () => {
+                    blob = new Blob(chunks, { type: 'audio/webm' });
+
+                    // hide recording UI
+                    document.getElementById('waveform').classList.remove('visible');
+                    document.getElementById('countdown').style.display = 'none';
+                    document.getElementById('ring1').classList.remove('pulse');
+                    document.getElementById('ring2').classList.remove('pulse');
+                    document.getElementById('ring3').classList.remove('pulse');
+                    document.getElementById('micBtn').classList.remove('recording');
+                    document.getElementById('micBtn').innerText = '✅';
+
+                    // show audio preview
+                    const url = URL.createObjectURL(blob);
+                    document.getElementById('audioPlayer').src = url;
+                    document.getElementById('audioPreview').classList.add('visible');
+
+                    // // show submit button
+                    // document.getElementById('submitBtn').style.display='flex';
+                    // document.getElementById('recStatus').innerText='✓  Recording complete — preview above';
+                    // document.getElementById('micHint').innerText='Re-record by pressing the button again';
+                    // recActive=false;
+                };
+
+                // start recording UI
+                document.getElementById('micBtn').classList.add('recording');
+                document.getElementById('micBtn').innerText = '⏹';
+                document.getElementById('waveform').classList.add('visible');
+                document.getElementById('ring1').classList.add('pulse');
+                document.getElementById('ring2').classList.add('pulse');
+                document.getElementById('ring3').classList.add('pulse');
+                document.getElementById('submitBtn').style.display = 'none';
+                document.getElementById('audioPreview').classList.remove('visible');
+                document.getElementById('recStatus').innerText = '🔴  Recording in progress…';
+                document.getElementById('micHint').innerText = 'Recording… tap ⏹ to stop early';
+
+                let s = 5;
+                const cd = document.getElementById('countdown');
+                cd.style.display = 'block'; cd.innerText = s;
+                cdTimer = setInterval(() => { s--; cd.innerText = s; if (s <= 0) { clearInterval(cdTimer); stopRec(); } }, 1000);
+
+            }).catch(() => alert('⚠️ Microphone access denied. Please allow microphone permission and try again.'));
+        }
+
+        function stopRec() {
+            clearInterval(cdTimer);
+            if (mr && mr.state !== 'inactive') { mr.stop(); mr.stream.getTracks().forEach(t => t.stop()); }
+        }
+
+        // function submitRecording(){
+        //     if(!blob){ alert('No recording found. Please record first.'); return; }
+
+        //     const btn=document.getElementById('submitBtn');
+        //     btn.innerText='⏳  Identifying…';
+        //     btn.disabled=true;
+
+        //     const formData=new FormData();
+        //     formData.append('csrfmiddlewaretoken','{{ csrf_token }}');
+        //     formData.append('audio_blob', blob, 'recorded_audio.webm');
+
+        //     fetch("{% url 'predictImage' %}",{method:'POST',body:formData})
+        //     .then(response=>{
+        //         if(response.redirected){ window.location.href=response.url; }
+        //         else{ return response.text().then(html=>{ document.open(); document.write(html); document.close(); }); }
+        //     })
+        // .catch(err=>{
+        //     console.error(err);
+        //     btn.innerText='🔁  Retry';
+        //     btn.disabled=false;
+        // });
+        // }
+    </script>
+
+</body>
+
+</html>
+{% endblock content %}
