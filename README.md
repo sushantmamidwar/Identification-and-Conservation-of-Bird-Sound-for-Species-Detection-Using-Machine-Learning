@@ -1,0 +1,2 @@
+# Identification-and-Conservation-of-Bird-Sound-for-Species-Detection-Using-Machine-Learning
+BirdDetect AI is a Django-based bird sound recognition system that identifies species from vocalizations. It uses MFCC, Mel Spectrogram, Chroma and other acoustic features with machine learning and deep learning models. Trained on 500 samples from 50 species, Random Forest achieved 97% accuracy for fast, reliable and efficient species detection.
